@@ -460,14 +460,14 @@ func (s *PostgresStore) InsertBookSnapshot(ctx context.Context, snap *models.Boo
 	query := `
 		INSERT INTO book_snapshots
 			(token_id, side, symbol, interval, best_bid, best_ask, spread,
-			 bid_size, ask_size, last_trade, book_hash, raw_bids, raw_asks)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			 bid_size, ask_size, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`
 	_, err := s.pool.Exec(ctx, query,
 		snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
 		snap.BestBid, snap.BestAsk, snap.Spread,
 		snap.BidSize, snap.AskSize, snap.LastTrade,
-		snap.BookHash, snap.RawBids, snap.RawAsks,
+		snap.BookHash, snap.TimestampAPI, snap.RawBids, snap.RawAsks,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting book snapshot: %w", err)
@@ -509,8 +509,8 @@ func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*m
 	const query = `
 		INSERT INTO book_snapshots
 			(token_id, side, symbol, interval, best_bid, best_ask, spread,
-			 bid_size, ask_size, last_trade, book_hash, raw_bids, raw_asks)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+			 bid_size, ask_size, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`
 
 	batch := &pgx.Batch{}
@@ -519,7 +519,7 @@ func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*m
 			snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
 			snap.BestBid, snap.BestAsk, snap.Spread,
 			snap.BidSize, snap.AskSize, snap.LastTrade,
-			snap.BookHash, snap.RawBids, snap.RawAsks,
+			snap.BookHash, snap.TimestampAPI, snap.RawBids, snap.RawAsks,
 		)
 	}
 

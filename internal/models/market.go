@@ -183,17 +183,18 @@ type ActiveToken struct {
 
 // BookSnapshot holds a full order book snapshot for one token.
 type BookSnapshot struct {
-	TokenID    string
-	Side       string
-	Symbol     string
-	Interval   string
-	BestBid    *float64
-	BestAsk    *float64
-	Spread     *float64
-	BidSize    *float64
-	AskSize    *float64
-	LastTrade  *float64
-	BookHash   *string
-	RawBids    []byte // JSON array of bid levels
-	RawAsks    []byte // JSON array of ask levels
+	TokenID     string
+	Side        string
+	Symbol      string
+	Interval    string
+	BestBid     *float64
+	BestAsk     *float64
+	Spread      *float64
+	BidSize     *float64
+	AskSize     *float64
+	LastTrade   *float64
+	BookHash    *string
+	TimestampAPI *time.Time // timestamp returned by the CLOB API
+	RawBids     []byte     // JSON array of bid levels
+	RawAsks     []byte     // JSON array of ask levels
 }
