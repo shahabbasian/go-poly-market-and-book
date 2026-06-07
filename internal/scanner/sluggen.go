@@ -143,8 +143,14 @@ func generateInitial1hSlugs(symbol string, now time.Time, n int) ([]string, erro
 		return nil, fmt.Errorf("unknown symbol: %s", symbol)
 	}
 
-	// Anchor to the current hour
-	anchor := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, time.UTC)
+	et, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		return nil, fmt.Errorf("loading ET timezone: %w", err)
+	}
+	nowET := now.In(et)
+
+	// Anchor to the current ET hour
+	anchor := time.Date(nowET.Year(), nowET.Month(), nowET.Day(), nowET.Hour(), 0, 0, 0, et)
 
 	var slugs []string
 	for i := 1; i <= n; i++ {
@@ -161,17 +167,23 @@ func generateNext1hSlugs(symbol string, currentSlug string, n int) ([]string, er
 		return nil, fmt.Errorf("unknown symbol: %s", symbol)
 	}
 
+	et, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		return nil, fmt.Errorf("loading ET timezone: %w", err)
+	}
+	nowET := time.Now().In(et)
+
 	// Try to parse from existing slug
 	t, err := parse1hSlug(currentSlug)
 	if err != nil {
-		// Fallback: use current time and just generate from now
-		return generateInitial1hSlugs(symbol, time.Now().UTC(), n)
+		// Fallback: use current ET time and just generate from now
+		return generateInitial1hSlugs(symbol, nowET, n)
 	}
 
 	// If anchor is so old that even N future hours are expired, fall back.
-	staleThreshold := time.Now().UTC().Add(-time.Duration(n) * time.Hour)
+	staleThreshold := nowET.Add(-time.Duration(n) * time.Hour)
 	if t.Before(staleThreshold) {
-		return generateInitial1hSlugs(symbol, time.Now().UTC(), n)
+		return generateInitial1hSlugs(symbol, nowET, n)
 	}
 
 	var slugs []string
@@ -211,7 +223,11 @@ func parse1hSlug(slug string) (time.Time, error) {
 		hour = 0
 	}
 
-	t := time.Date(year, month, day, hour, 0, 0, 0, time.UTC)
+	et, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		return time.Time{}, fmt.Errorf("loading ET timezone: %w", err)
+	}
+	t := time.Date(year, month, day, hour, 0, 0, 0, et)
 	return t, nil
 }
 
@@ -247,8 +263,13 @@ func CurrentSlug(symbol string, interval string) string {
 		if fullName == "" {
 			return ""
 		}
-		// Anchor to the current hour
-		anchor := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, time.UTC)
+		et, err := time.LoadLocation("America/New_York")
+		if err != nil {
+			return ""
+		}
+		nowET := now.In(et)
+		// Anchor to the current ET hour
+		anchor := time.Date(nowET.Year(), nowET.Month(), nowET.Day(), nowET.Hour(), 0, 0, 0, et)
 		return format1hSlug(fullName, anchor)
 	}
 

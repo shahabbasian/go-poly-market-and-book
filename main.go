@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/api"
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/collector"
