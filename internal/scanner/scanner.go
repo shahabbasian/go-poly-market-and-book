@@ -3,7 +3,6 @@ package scanner
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strconv"
 	"strings"
