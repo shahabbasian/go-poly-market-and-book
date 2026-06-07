@@ -78,11 +78,11 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		`CREATE INDEX IF NOT EXISTS idx_book_snapshots_symbol_interval ON book_snapshots (symbol, interval, recorded_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_book_snapshots_token_api_time ON book_snapshots (token_id, timestamp_api DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_book_snapshots_symbol_interval_api_time ON book_snapshots (symbol, interval, timestamp_api DESC)`,
-		-- Before creating this unique index, remove existing duplicates:
-		--   DELETE FROM book_snapshots WHERE id NOT IN (
-		--     SELECT MIN(id) FROM book_snapshots
-		--     WHERE timestamp_api IS NOT NULL GROUP BY token_id, timestamp_api
-		--   );
+		// NOTE: before creating the unique index below, remove existing duplicates manually:
+		//   DELETE FROM book_snapshots WHERE id NOT IN (
+		//     SELECT MIN(id) FROM book_snapshots
+		//     WHERE timestamp_api IS NOT NULL GROUP BY token_id, timestamp_api
+		//   );
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_book_snapshots_unique_token_api_time ON book_snapshots (token_id, timestamp_api) WHERE timestamp_api IS NOT NULL`,
 
 		`CREATE TABLE IF NOT EXISTS public.current_books (
