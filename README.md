@@ -91,13 +91,13 @@ git push -u origin main
 
 | Coin | 5m Slug | 15m Slug | 1h Slug | 4h Slug |
 |------|---------|----------|---------|---------|
-| BTC | `btc-updown-5m-{ts}` | `btc-updown-15m-{ts}` | `bitcoin-up-or-down-{date}` | `btc-updown-4h-{ts}` |
-| ETH | `eth-updown-5m-{ts}` | `eth-updown-15m-{ts}` | `ethereum-up-or-down-{date}` | `eth-updown-4h-{ts}` |
-| SOL | `sol-updown-5m-{ts}` | `sol-updown-15m-{ts}` | `solana-up-or-down-{date}` | `sol-updown-4h-{ts}` |
-| XRP | `xrp-updown-5m-{ts}` | `xrp-updown-15m-{ts}` | `xrp-up-or-down-{date}` | `xrp-updown-4h-{ts}` |
-| DOGE | `doge-updown-5m-{ts}` | `doge-updown-15m-{ts}` | `dogecoin-up-or-down-{date}` | `doge-updown-4h-{ts}` |
-| HYPE | `hype-updown-5m-{ts}` | `hype-updown-15m-{ts}` | `hype-up-or-down-{date}` | `hype-updown-4h-{ts}` |
-| BNB | `bnb-updown-5m-{ts}` | `bnb-updown-15m-{ts}` | `bnb-up-or-down-{date}` | `bnb-updown-4h-{ts}` |
+| BTC | `btc-updown-5m-{ts}` | `btc-updown-15m-{ts}` | `bitcoin-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `btc-updown-4h-{ts}` |
+| ETH | `eth-updown-5m-{ts}` | `eth-updown-15m-{ts}` | `ethereum-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `eth-updown-4h-{ts}` |
+| SOL | `sol-updown-5m-{ts}` | `sol-updown-15m-{ts}` | `solana-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `sol-updown-4h-{ts}` |
+| XRP | `xrp-updown-5m-{ts}` | `xrp-updown-15m-{ts}` | `xrp-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `xrp-updown-4h-{ts}` |
+| DOGE | `doge-updown-5m-{ts}` | `doge-updown-15m-{ts}` | `dogecoin-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `doge-updown-4h-{ts}` |
+| HYPE | `hype-updown-5m-{ts}` | `hype-updown-15m-{ts}` | `hype-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `hype-updown-4h-{ts}` |
+| BNB | `bnb-updown-5m-{ts}` | `bnb-updown-15m-{ts}` | `bnb-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `bnb-updown-4h-{ts}` |
 
 ## Database
 

@@ -110,25 +110,25 @@ func parseTimestampSlug(slug string, interval string) (int64, error) {
 
 // ---- 1h (human-readable date) patterns ----
 
-var hour1hRegex = regexp.MustCompile(`^(\w+)-up-or-down-([a-z]{3})-(\d{1,2})-(\d{4})-(\d{1,2})([ap]m)-et$`)
+var hour1hRegex = regexp.MustCompile(`^(\w+)-up-or-down-([a-z]+)-(\d{1,2})-(\d{4})-(\d{1,2})([ap]m)-et$`)
 
-// Month abbreviation to number mapping.
+// Month name to number mapping (Polymarket uses full lowercase month names).
 var monthMap = map[string]time.Month{
-	"jan": time.January,
-	"feb": time.February,
-	"mar": time.March,
-	"apr": time.April,
-	"may": time.May,
-	"jun": time.June,
-	"jul": time.July,
-	"aug": time.August,
-	"sep": time.September,
-	"oct": time.October,
-	"nov": time.November,
-	"dec": time.December,
+	"january":   time.January,
+	"february":  time.February,
+	"march":     time.March,
+	"april":     time.April,
+	"may":       time.May,
+	"june":      time.June,
+	"july":      time.July,
+	"august":    time.August,
+	"september": time.September,
+	"october":   time.October,
+	"november":  time.November,
+	"december":  time.December,
 }
 
-var monthAbbrs = []string{"", "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"}
+var monthNames = []string{"", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
 
 func generateInitial1hSlugs(symbol string, now time.Time, n int) ([]string, error) {
 	fullName := models.CoinSymbolMap[symbol]
@@ -177,15 +177,15 @@ func parse1hSlug(slug string) (time.Time, error) {
 	}
 
 	// matches[1] = fullName (not used here)
-	monthAbbr := matches[2]
+	monthName := matches[2]
 	dayStr := matches[3]
 	yearStr := matches[4]
 	hourStr := matches[5]
 	ampm := matches[6]
 
-	month, ok := monthMap[monthAbbr]
+	month, ok := monthMap[monthName]
 	if !ok {
-		return time.Time{}, fmt.Errorf("unknown month abbreviation: %s", monthAbbr)
+		return time.Time{}, fmt.Errorf("unknown month name: %s", monthName)
 	}
 
 	day, _ := strconv.Atoi(dayStr)
@@ -217,7 +217,7 @@ func format1hSlug(fullName string, t time.Time) string {
 
 	return fmt.Sprintf("%s-up-or-down-%s-%d-%d-%s-et",
 		fullName,
-		monthAbbrs[t.Month()],
+		monthNames[t.Month()],
 		t.Day(),
 		t.Year(),
 		hourStr,
