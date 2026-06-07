@@ -1,0 +1,70 @@
+package db
+
+import (
+	"context"
+	"log/slog"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// RunMigrations executes idempotent CREATE statements.
+func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
+	statements := []string{
+		`CREATE TABLE IF NOT EXISTS public.new_markets (
+			id uuid NOT NULL DEFAULT gen_random_uuid(),
+			symbol character varying(10) NOT NULL,
+			interval character varying(10) NOT NULL,
+			condition_id character varying(128) NULL,
+			token_id_yes character varying(128) NULL,
+			token_id_no character varying(128) NULL,
+			question text NULL,
+			slug text NOT NULL,
+			outcomes text NULL,
+			start_date timestamp with time zone NULL,
+			end_date timestamp with time zone NULL,
+			gamma_market_id character varying(64) NULL,
+			enable_order_book boolean NULL,
+			accepting_orders boolean NULL,
+			ready boolean NULL,
+			funded boolean NULL,
+			order_min_size double precision NULL,
+			order_price_min_tick_size double precision NULL,
+			best_bid double precision NULL,
+			best_ask double precision NULL,
+			last_trade_price double precision NULL,
+			volume_clob double precision NULL,
+			volume_num double precision NULL,
+			created_at timestamp with time zone NOT NULL DEFAULT now(),
+			updated_at timestamp with time zone NOT NULL DEFAULT now(),
+			status character varying(20) NULL DEFAULT 'upcoming',
+			winning_outcome character varying(10) NULL,
+			price_to_beat double precision NULL,
+			last_book_hash character varying(128) NULL,
+			CONSTRAINT new_markets_pkey PRIMARY KEY (id)
+		)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS unique_new_token_id_yes ON public.new_markets (token_id_yes) WHERE token_id_yes IS NOT NULL`,
+		`CREATE INDEX IF NOT EXISTS idx_new_markets_symbol_interval ON public.new_markets USING btree (symbol, interval)`,
+		`CREATE INDEX IF NOT EXISTS idx_new_markets_start_date ON public.new_markets USING btree (start_date)`,
+		`CREATE INDEX IF NOT EXISTS idx_new_markets_token_id_yes ON public.new_markets USING btree (token_id_yes)`,
+		`CREATE INDEX IF NOT EXISTS idx_new_markets_status ON public.new_markets USING btree (status)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_new_markets_unique_slug ON public.new_markets (slug)`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_new_markets_unique_symbol_interval_start ON public.new_markets (symbol, interval, start_date) WHERE start_date IS NOT NULL`,
+	}
+
+	for _, stmt := range statements {
+		if _, err := pool.Exec(ctx, stmt); err != nil {
+			slog.Error("Migration failed", "stmt", stmt[:min(80, len(stmt))], "error", err)
+			return err
+		}
+	}
+
+	slog.Info("Migrations completed successfully")
+	return nil
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

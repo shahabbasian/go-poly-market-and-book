@@ -1,0 +1,33 @@
+# Polymarket Rust starter. Pin to the latest published version before building:
+#   cargo search polymarket_client_sdk_v2
+# Enable only the features you need to keep compile times down.
+[package]
+name = "polymarket-bot"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.88"
+
+[dependencies]
+polymarket_client_sdk_v2 = { version = "0.5", features = ["clob", "ws", "data", "gamma", "heartbeats"] }
+alloy = { version = "0.8", features = ["signers", "signer-local"] }
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+anyhow = "1"
+rust_decimal_macros = "1"
+
+# Optional extras depending on what you build:
+#   "bridge"  -> cross-chain deposits      "ctf" -> split/merge/redeem
+#   "rtds"    -> crypto price + comment ws  "rfq" -> request-for-quote
+#   "tracing" -> structured logging
+
+[[bin]]
+name = "read"
+path = "src/bin/read_market_data.rs"
+
+[[bin]]
+name = "trade"
+path = "src/bin/place_order.rs"
+
+[[bin]]
+name = "stream"
+path = "src/bin/stream_orderbook.rs"

@@ -1,0 +1,23 @@
+services:
+  fetcher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: polymarket-fetcher
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      RATE_LIMIT_DELAY_MS: ${RATE_LIMIT_DELAY_MS:-250}
+      DISCOVERY_INTERVAL_S: ${DISCOVERY_INTERVAL_S:-30}
+      REFRESH_INTERVAL_S: ${REFRESH_INTERVAL_S:-60}
+      FUTURE_SLUG_COUNT: ${FUTURE_SLUG_COUNT:-10}
+      INITIAL_SLUG_COUNT: ${INITIAL_SLUG_COUNT:-20}
+      CLOB_BATCH_SIZE: ${CLOB_BATCH_SIZE:-50}
+      REFRESH_MAX_AGE_M: ${REFRESH_MAX_AGE_M:-5}
+      REFRESH_LIMIT: ${REFRESH_LIMIT:-100}
+      HTTP_TIMEOUT_S: ${HTTP_TIMEOUT_S:-30}
+      MAX_RETRIES: ${MAX_RETRIES:-5}
+    networks:
+      - default
