@@ -462,6 +462,7 @@ func (s *PostgresStore) InsertBookSnapshot(ctx context.Context, snap *models.Boo
 			(token_id, side, symbol, interval, best_bid, best_ask, spread,
 			 bid_size, ask_size, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		ON CONFLICT DO NOTHING
 	`
 	_, err := s.pool.Exec(ctx, query,
 		snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
@@ -511,6 +512,7 @@ func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*m
 			(token_id, side, symbol, interval, best_bid, best_ask, spread,
 			 bid_size, ask_size, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+		ON CONFLICT DO NOTHING
 	`
 
 	batch := &pgx.Batch{}

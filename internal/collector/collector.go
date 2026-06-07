@@ -30,15 +30,20 @@ type Collector struct {
 	// Snapshot buffer
 	bufferMu sync.Mutex
 	buffer   []*models.BookSnapshot
+
+	// Last inserted book hash per token_id, used to skip consecutive duplicates
+	lastHashMu  sync.Mutex
+	lastBookHash map[string]string
 }
 
 // New creates a new Collector.
 func New(store *db.PostgresStore, clobClient *api.CLOBClient, cfg *config.Config) *Collector {
 	return &Collector{
-		store:      store,
-		clobClient: clobClient,
-		cfg:        cfg,
-		buffer:     make([]*models.BookSnapshot, 0, cfg.CollectorBufferMaxRows),
+		store:        store,
+		clobClient:   clobClient,
+		cfg:          cfg,
+		buffer:       make([]*models.BookSnapshot, 0, cfg.CollectorBufferMaxRows),
+		lastBookHash: make(map[string]string),
 	}
 }
 
@@ -255,14 +260,39 @@ func (c *Collector) flushBuffer(ctx context.Context) {
 	start := time.Now()
 	totalRows := len(toFlush)
 
-	// 1. Insert ALL snapshots into time-series table (keep every row)
-	if err := c.store.InsertBookSnapshotsBatch(ctx, toFlush); err != nil {
-		slog.Error("collector batch insert failed, buffer dropped", "rows", totalRows, "error", err)
+	// Filter out consecutive duplicate book hashes per token.
+	// We keep the first snapshot of a new hash and skip later ones in this
+	// batch that match the last known hash.  This prevents DB bloat for
+	// stale markets (1h, 4h) without losing legitimate returns to a
+	// previous hash after an intervening change.
+	var filtered []*models.BookSnapshot
+	c.lastHashMu.Lock()
+	for _, snap := range toFlush {
+		if snap.BookHash != nil {
+			if last, ok := c.lastBookHash[snap.TokenID]; ok && last == *snap.BookHash {
+				continue // exact duplicate of last inserted state
+			}
+			c.lastBookHash[snap.TokenID] = *snap.BookHash
+		}
+		filtered = append(filtered, snap)
+	}
+	c.lastHashMu.Unlock()
+
+	if len(filtered) == 0 {
+		slog.Debug("collector flush skipped, all rows were consecutive duplicates",
+			"buffered", totalRows,
+		)
+		return
+	}
+
+	// 1. Insert filtered snapshots into time-series table
+	if err := c.store.InsertBookSnapshotsBatch(ctx, filtered); err != nil {
+		slog.Error("collector batch insert failed, buffer dropped", "rows", len(filtered), "error", err)
 		return
 	}
 
 	// 2. For current_books, only keep the latest snapshot per token_id
-	latest := c.dedupLatest(toFlush)
+	latest := c.dedupLatest(filtered)
 
 	if err := c.store.UpsertCurrentBooksBatch(ctx, latest); err != nil {
 		slog.Error("collector batch upsert failed", "rows", len(latest), "error", err)
@@ -270,7 +300,8 @@ func (c *Collector) flushBuffer(ctx context.Context) {
 	}
 
 	slog.Info("collector flushed to DB",
-		"snapshots", totalRows,
+		"snapshots", len(filtered),
+		"skipped_dups", totalRows-len(filtered),
 		"current_books_upserted", len(latest),
 		"duration", time.Since(start),
 	)
