@@ -69,7 +69,11 @@ func (c *CLOBClient) FetchBooksBatch(ctx context.Context, tokenIDs []string) (ma
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		slog.Warn("clob batch fetch failed", "status", resp.StatusCode, "body", string(body))
+		if resp.StatusCode == http.StatusTooManyRequests {
+			slog.Warn("clob rate limited (429)", "tokens", len(tokenIDs), "body", string(body))
+		} else {
+			slog.Warn("clob batch fetch failed", "status", resp.StatusCode, "body", string(body))
+		}
 		return nil, fmt.Errorf("unexpected status %d", resp.StatusCode)
 	}
 

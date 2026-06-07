@@ -54,10 +54,13 @@ func Load() *Config {
 		MaxRetries:        envInt("MAX_RETRIES", 5),
 		BackoffBaseDelay:  envDurationMS("BACKOFF_BASE_DELAY_MS", 1000),
 		BackoffMaxDelay:   envDurationMS("BACKOFF_MAX_DELAY_MS", 30000),
-		CollectorDelayMS:       envInt("COLLECTOR_DELAY_MS", 333),
-		CollectorFlushIntervalS: envInt("COLLECTOR_FLUSH_INTERVAL_S", 5),
+		// Backtest mode: aggressive polling for high-resolution order book data.
+		// 10 Hz polling per market-side captures wicks, slippage, and order flow.
+		// Monitor logs for 429 rate-limit warnings; raise to 200ms if needed.
+		CollectorDelayMS:       envInt("COLLECTOR_DELAY_MS", 100),
+		CollectorFlushIntervalS: envInt("COLLECTOR_FLUSH_INTERVAL_S", 2),
 		CollectorTokenRefreshS:  envInt("COLLECTOR_TOKEN_REFRESH_S", 60),
-		CollectorBufferMaxRows:  envInt("COLLECTOR_BUFFER_MAX_ROWS", 1000),
+		CollectorBufferMaxRows:  envInt("COLLECTOR_BUFFER_MAX_ROWS", 5000),
 	}
 }
 
