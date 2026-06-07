@@ -21,3 +21,9 @@ services:
       MAX_RETRIES: ${MAX_RETRIES:-5}
     networks:
       - default
+      - supabase-net
+
+networks:
+  supabase-net:
+    external: true
+    name: btlyefmo9beepazzx2jt10dz
