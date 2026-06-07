@@ -420,32 +420,25 @@ func scanMarkets(rows pgx.Rows) ([]*models.NewMarket, error) {
 	return markets, rows.Err()
 }
 
-// GetActiveMarketTokens returns all active token IDs (yes + no) from active markets.
-// Returns 56 rows: 28 yes + 28 no.
-// Coins and intervals are hardcoded — add/remove manually if needed.
-func (s *PostgresStore) GetActiveMarketTokens(ctx context.Context) ([]models.ActiveToken, error) {
+// GetActiveMarketTokens returns token IDs for markets matching the given slugs.
+// Caller should provide slugs for the current time window (typically 28 slugs).
+func (s *PostgresStore) GetActiveMarketTokens(ctx context.Context, slugs []string) ([]models.ActiveToken, error) {
 	query := `
 		SELECT
 			token_id_yes AS token_id, 'yes' AS side, symbol, interval
 		FROM new_markets
-		WHERE symbol IN ('btc','eth','sol','xrp','doge','hype','bnb')
-		  AND interval IN ('5m','15m','1h','4h')
+		WHERE slug = ANY($1)
 		  AND token_id_yes IS NOT NULL
-		  AND status NOT IN ('closed', 'resolved')
-		  AND enable_order_book = true
 		UNION ALL
 		SELECT
 			token_id_no AS token_id, 'no' AS side, symbol, interval
 		FROM new_markets
-		WHERE symbol IN ('btc','eth','sol','xrp','doge','hype','bnb')
-		  AND interval IN ('5m','15m','1h','4h')
+		WHERE slug = ANY($1)
 		  AND token_id_no IS NOT NULL
-		  AND status NOT IN ('closed', 'resolved')
-		  AND enable_order_book = true
 		ORDER BY symbol, interval, side
 	`
 
-	rows, err := s.pool.Query(ctx, query)
+	rows, err := s.pool.Query(ctx, query, slugs)
 	if err != nil {
 		return nil, fmt.Errorf("querying active market tokens: %w", err)
 	}

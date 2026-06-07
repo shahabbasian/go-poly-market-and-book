@@ -236,3 +236,37 @@ func format1hSlug(fullName string, t time.Time) string {
 		hourStr,
 	)
 }
+
+// CurrentSlug returns the slug for the currently active market window.
+// Returns empty string if symbol or interval is invalid.
+func CurrentSlug(symbol string, interval string) string {
+	now := time.Now().UTC()
+
+	if interval == "1h" {
+		fullName := models.CoinSymbolMap[symbol]
+		if fullName == "" {
+			return ""
+		}
+		// Anchor to the current hour
+		anchor := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), 0, 0, 0, time.UTC)
+		return format1hSlug(fullName, anchor)
+	}
+
+	var dur int64
+	switch interval {
+	case "5m":
+		dur = 300
+	case "15m":
+		dur = 900
+	case "4h":
+		dur = 14400
+	default:
+		return ""
+	}
+
+	// Round current time down to the nearest interval boundary.
+	ts := now.Unix()
+	rounded := (ts / dur) * dur
+
+	return fmt.Sprintf("%s-updown-%s-%d", symbol, interval, rounded)
+}

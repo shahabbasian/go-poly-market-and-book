@@ -12,6 +12,7 @@ import (
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/config"
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/db"
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/models"
+	"github.com/shahabbasian/polymarket-market-fetcher/internal/scanner"
 )
 
 // Collector continuously fetches deep order books for all active tokens
@@ -93,13 +94,23 @@ func (c *Collector) tokenRefreshLoop(ctx context.Context) {
 }
 
 func (c *Collector) refreshTokens(ctx context.Context) {
-	tokens, err := c.store.GetActiveMarketTokens(ctx)
+	// Generate current slugs for all 28 coin×interval combos
+	var slugs []string
+	for _, coin := range models.Coins {
+		for _, iv := range models.Intervals {
+			if sl := scanner.CurrentSlug(coin.Symbol, iv.Name); sl != "" {
+				slugs = append(slugs, sl)
+			}
+		}
+	}
+
+	tokens, err := c.store.GetActiveMarketTokens(ctx, slugs)
 	if err != nil {
 		slog.Error("collector failed to refresh tokens", "error", err)
 		return
 	}
 	if len(tokens) == 0 {
-		slog.Warn("collector: no active tokens found")
+		slog.Warn("collector: no active tokens found for current time window")
 		return
 	}
 	c.setCachedTokens(tokens)
@@ -138,48 +149,63 @@ func (c *Collector) fetchAndBuffer(ctx context.Context) {
 	}
 
 	start := time.Now()
+	totalFetched := 0
 
-	// Build all token IDs
-	allIDs := make([]string, len(tokens))
-	for i, tok := range tokens {
-		allIDs[i] = tok.TokenID
+	// CLOB API has a payload limit — split into batches of 50 tokens.
+	batchSize := c.cfg.CLOBBatchSize
+	if batchSize <= 0 || batchSize > 50 {
+		batchSize = 50
 	}
 
-	// Fetch all order books in one batch request
-	books, err := c.clobClient.FetchBooksBatch(ctx, allIDs)
-	if err != nil {
-		slog.Warn("collector batch fetch failed", "tokens", len(allIDs), "error", err)
-		return
-	}
+	for i := 0; i < len(tokens); i += batchSize {
+		end := i + batchSize
+		if end > len(tokens) {
+			end = len(tokens)
+		}
+		batch := tokens[i:end]
 
-	// Parse into BookSnapshot
-	var snaps []*models.BookSnapshot
-	for _, tok := range tokens {
-		book, ok := books[tok.TokenID]
-		if !ok || book == nil {
+		// Build token IDs for this batch
+		ids := make([]string, len(batch))
+		for j, tok := range batch {
+			ids[j] = tok.TokenID
+		}
+
+		// Rate limit is handled by the CLOBClient internally.
+		books, err := c.clobClient.FetchBooksBatch(ctx, ids)
+		if err != nil {
+			slog.Warn("collector batch fetch failed", "tokens", len(ids), "error", err)
+			return
+		}
+
+		// Parse into BookSnapshot
+		var snaps []*models.BookSnapshot
+		for _, tok := range batch {
+			book, ok := books[tok.TokenID]
+			if !ok || book == nil {
+				continue
+			}
+			snaps = append(snaps, c.buildSnapshot(tok, book))
+		}
+
+		if len(snaps) == 0 {
 			continue
 		}
-		snaps = append(snaps, c.buildSnapshot(tok, book))
-	}
 
-	if len(snaps) == 0 {
-		return
-	}
-
-	// Append to buffer — enforce hard limit
-	c.bufferMu.Lock()
-	if len(c.buffer)+len(snaps) > c.cfg.CollectorBufferMaxRows {
-		slog.Warn("collector buffer full, dropping snapshots", "buffer", len(c.buffer), "dropping", len(snaps), "max", c.cfg.CollectorBufferMaxRows)
+		// Append to buffer — enforce hard limit
+		c.bufferMu.Lock()
+		if len(c.buffer)+len(snaps) > c.cfg.CollectorBufferMaxRows {
+			slog.Warn("collector buffer full, dropping snapshots", "buffer", len(c.buffer), "dropping", len(snaps), "max", c.cfg.CollectorBufferMaxRows)
+			c.bufferMu.Unlock()
+			return
+		}
+		c.buffer = append(c.buffer, snaps...)
+		totalFetched += len(snaps)
 		c.bufferMu.Unlock()
-		return
 	}
-	c.buffer = append(c.buffer, snaps...)
-	bufLen := len(c.buffer)
-	c.bufferMu.Unlock()
 
 	slog.Debug("collector fetched batch",
-		"fetched", len(snaps),
-		"buffer", bufLen,
+		"total_fetched", totalFetched,
+		"buffer", len(c.buffer),
 		"duration", time.Since(start),
 	)
 }
