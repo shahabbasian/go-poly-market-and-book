@@ -422,39 +422,30 @@ func scanMarkets(rows pgx.Rows) ([]*models.NewMarket, error) {
 
 // GetActiveMarketTokens returns all active token IDs (yes + no) from active markets.
 // Returns 56 rows: 28 yes + 28 no.
+// Coins and intervals are hardcoded — add/remove manually if needed.
 func (s *PostgresStore) GetActiveMarketTokens(ctx context.Context) ([]models.ActiveToken, error) {
-	// Build dynamic IN lists from models so adding a new coin/interval is automatic.
-	symbols := make([]string, len(models.Coins))
-	for i, c := range models.Coins {
-		symbols[i] = c.Symbol
-	}
-	intervals := make([]string, len(models.Intervals))
-	for i, iv := range models.Intervals {
-		intervals[i] = iv.Name
-	}
-
 	query := `
 		SELECT
 			token_id_yes AS token_id, 'yes' AS side, symbol, interval
 		FROM new_markets
-		WHERE symbol = ANY($1)
-		  AND interval = ANY($2)
+		WHERE symbol IN ('btc','eth','sol','xrp','doge','hype','bnb')
+		  AND interval IN ('5m','15m','1h','4h')
 		  AND token_id_yes IS NOT NULL
-		  AND status IN ('active', 'funded')
+		  AND status NOT IN ('closed', 'resolved')
 		  AND enable_order_book = true
 		UNION ALL
 		SELECT
 			token_id_no AS token_id, 'no' AS side, symbol, interval
 		FROM new_markets
-		WHERE symbol = ANY($1)
-		  AND interval = ANY($2)
+		WHERE symbol IN ('btc','eth','sol','xrp','doge','hype','bnb')
+		  AND interval IN ('5m','15m','1h','4h')
 		  AND token_id_no IS NOT NULL
-		  AND status IN ('active', 'funded')
+		  AND status NOT IN ('closed', 'resolved')
 		  AND enable_order_book = true
 		ORDER BY symbol, interval, side
 	`
 
-	rows, err := s.pool.Query(ctx, query, symbols, intervals)
+	rows, err := s.pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("querying active market tokens: %w", err)
 	}

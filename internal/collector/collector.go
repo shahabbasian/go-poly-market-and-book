@@ -103,7 +103,7 @@ func (c *Collector) refreshTokens(ctx context.Context) {
 		return
 	}
 	c.setCachedTokens(tokens)
-	slog.Debug("collector refreshed token list", "count", len(tokens))
+	slog.Info("collector refreshed token list", "count", len(tokens))
 }
 
 // ---- Fetch loop: batch CLOB requests at 3 req/s ----
