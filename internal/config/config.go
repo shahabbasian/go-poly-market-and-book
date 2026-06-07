@@ -24,6 +24,10 @@ type Config struct {
 	MaxRetries         int
 	BackoffBaseDelay   time.Duration
 	BackoffMaxDelay    time.Duration
+	CollectorDelayMS       int
+	CollectorFlushIntervalS int
+	CollectorTokenRefreshS  int
+	CollectorBufferMaxRows  int
 }
 
 func Load() *Config {
@@ -50,6 +54,10 @@ func Load() *Config {
 		MaxRetries:        envInt("MAX_RETRIES", 5),
 		BackoffBaseDelay:  envDurationMS("BACKOFF_BASE_DELAY_MS", 1000),
 		BackoffMaxDelay:   envDurationMS("BACKOFF_MAX_DELAY_MS", 30000),
+		CollectorDelayMS:       envInt("COLLECTOR_DELAY_MS", 333),
+		CollectorFlushIntervalS: envInt("COLLECTOR_FLUSH_INTERVAL_S", 5),
+		CollectorTokenRefreshS:  envInt("COLLECTOR_TOKEN_REFRESH_S", 60),
+		CollectorBufferMaxRows:  envInt("COLLECTOR_BUFFER_MAX_ROWS", 1000),
 	}
 }
 

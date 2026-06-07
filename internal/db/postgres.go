@@ -419,3 +419,173 @@ func scanMarkets(rows pgx.Rows) ([]*models.NewMarket, error) {
 	}
 	return markets, rows.Err()
 }
+
+// GetActiveMarketTokens returns all active token IDs (yes + no) from active markets.
+// Returns 56 rows: 28 yes + 28 no.
+func (s *PostgresStore) GetActiveMarketTokens(ctx context.Context) ([]models.ActiveToken, error) {
+	// Build dynamic IN lists from models so adding a new coin/interval is automatic.
+	symbols := make([]string, len(models.Coins))
+	for i, c := range models.Coins {
+		symbols[i] = c.Symbol
+	}
+	intervals := make([]string, len(models.Intervals))
+	for i, iv := range models.Intervals {
+		intervals[i] = iv.Name
+	}
+
+	query := `
+		SELECT
+			token_id_yes AS token_id, 'yes' AS side, symbol, interval
+		FROM new_markets
+		WHERE symbol = ANY($1)
+		  AND interval = ANY($2)
+		  AND token_id_yes IS NOT NULL
+		  AND status IN ('active', 'funded')
+		  AND enable_order_book = true
+		UNION ALL
+		SELECT
+			token_id_no AS token_id, 'no' AS side, symbol, interval
+		FROM new_markets
+		WHERE symbol = ANY($1)
+		  AND interval = ANY($2)
+		  AND token_id_no IS NOT NULL
+		  AND status IN ('active', 'funded')
+		  AND enable_order_book = true
+		ORDER BY symbol, interval, side
+	`
+
+	rows, err := s.pool.Query(ctx, query, symbols, intervals)
+	if err != nil {
+		return nil, fmt.Errorf("querying active market tokens: %w", err)
+	}
+	defer rows.Close()
+
+	var tokens []models.ActiveToken
+	for rows.Next() {
+		var tok models.ActiveToken
+		if err := rows.Scan(&tok.TokenID, &tok.Side, &tok.Symbol, &tok.Interval); err != nil {
+			return nil, fmt.Errorf("scanning active token row: %w", err)
+		}
+		tokens = append(tokens, tok)
+	}
+	return tokens, rows.Err()
+}
+
+// InsertBookSnapshot inserts a full order book snapshot into book_snapshots.
+func (s *PostgresStore) InsertBookSnapshot(ctx context.Context, snap *models.BookSnapshot) error {
+	query := `
+		INSERT INTO book_snapshots
+			(token_id, side, symbol, interval, best_bid, best_ask, spread,
+			 bid_size, ask_size, last_trade, book_hash, raw_bids, raw_asks)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	`
+	_, err := s.pool.Exec(ctx, query,
+		snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
+		snap.BestBid, snap.BestAsk, snap.Spread,
+		snap.BidSize, snap.AskSize, snap.LastTrade,
+		snap.BookHash, snap.RawBids, snap.RawAsks,
+	)
+	if err != nil {
+		return fmt.Errorf("inserting book snapshot: %w", err)
+	}
+	return nil
+}
+
+// UpsertCurrentBook upserts into current_books (ON CONFLICT on token_id).
+func (s *PostgresStore) UpsertCurrentBook(ctx context.Context, snap *models.BookSnapshot) error {
+	query := `
+		INSERT INTO current_books
+			(token_id, side, symbol, interval, best_bid, best_ask, spread,
+			 bid_size, ask_size, last_trade, book_hash)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		ON CONFLICT (token_id) DO UPDATE SET
+			side = EXCLUDED.side, symbol = EXCLUDED.symbol, interval = EXCLUDED.interval,
+			best_bid = EXCLUDED.best_bid, best_ask = EXCLUDED.best_ask,
+			spread = EXCLUDED.spread, bid_size = EXCLUDED.bid_size,
+			ask_size = EXCLUDED.ask_size, last_trade = EXCLUDED.last_trade,
+			book_hash = EXCLUDED.book_hash, updated_at = now()
+	`
+	_, err := s.pool.Exec(ctx, query,
+		snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
+		snap.BestBid, snap.BestAsk, snap.Spread,
+		snap.BidSize, snap.AskSize, snap.LastTrade, snap.BookHash,
+	)
+	if err != nil {
+		return fmt.Errorf("upserting current book: %w", err)
+	}
+	return nil
+}
+
+// InsertBookSnapshotsBatch inserts multiple book snapshots using a single pgx.Batch.
+func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*models.BookSnapshot) error {
+	if len(snaps) == 0 {
+		return nil
+	}
+
+	const query = `
+		INSERT INTO book_snapshots
+			(token_id, side, symbol, interval, best_bid, best_ask, spread,
+			 bid_size, ask_size, last_trade, book_hash, raw_bids, raw_asks)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	`
+
+	batch := &pgx.Batch{}
+	for _, snap := range snaps {
+		batch.Queue(query,
+			snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
+			snap.BestBid, snap.BestAsk, snap.Spread,
+			snap.BidSize, snap.AskSize, snap.LastTrade,
+			snap.BookHash, snap.RawBids, snap.RawAsks,
+		)
+	}
+
+	br := s.pool.SendBatch(ctx, batch)
+	defer br.Close()
+
+	// Drain results
+	for i := 0; i < len(snaps); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("batch insert book_snapshots (row %d): %w", i, err)
+		}
+	}
+	return nil
+}
+
+// UpsertCurrentBooksBatch upserts multiple current_books rows using a single pgx.Batch.
+func (s *PostgresStore) UpsertCurrentBooksBatch(ctx context.Context, snaps []*models.BookSnapshot) error {
+	if len(snaps) == 0 {
+		return nil
+	}
+
+	const query = `
+		INSERT INTO current_books
+			(token_id, side, symbol, interval, best_bid, best_ask, spread,
+			 bid_size, ask_size, last_trade, book_hash)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		ON CONFLICT (token_id) DO UPDATE SET
+			side = EXCLUDED.side, symbol = EXCLUDED.symbol, interval = EXCLUDED.interval,
+			best_bid = EXCLUDED.best_bid, best_ask = EXCLUDED.best_ask,
+			spread = EXCLUDED.spread, bid_size = EXCLUDED.bid_size,
+			ask_size = EXCLUDED.ask_size, last_trade = EXCLUDED.last_trade,
+			book_hash = EXCLUDED.book_hash, updated_at = now()
+	`
+
+	batch := &pgx.Batch{}
+	for _, snap := range snaps {
+		batch.Queue(query,
+			snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
+			snap.BestBid, snap.BestAsk, snap.Spread,
+			snap.BidSize, snap.AskSize, snap.LastTrade, snap.BookHash,
+		)
+	}
+
+	br := s.pool.SendBatch(ctx, batch)
+	defer br.Close()
+
+	for i := 0; i < len(snaps); i++ {
+		if _, err := br.Exec(); err != nil {
+			return fmt.Errorf("batch upsert current_books (row %d): %w", i, err)
+		}
+	}
+	return nil
+}

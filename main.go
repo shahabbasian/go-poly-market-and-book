@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/api"
+	"github.com/shahabbasian/polymarket-market-fetcher/internal/collector"
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/config"
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/db"
 	"github.com/shahabbasian/polymarket-market-fetcher/internal/logging"
@@ -74,13 +75,21 @@ func main() {
 	gammaClient := api.NewGammaClient(httpClient, cfg.GammaBaseURL, gammaRL)
 	clobClient := api.NewCLOBClient(httpClient, cfg.CLOBBaseURL, clobRL)
 
+	// Separate CLOB client for collector with its own rate limiter (3 req/s)
+	collectorClobRL := api.NewRateLimiter(time.Duration(cfg.CollectorDelayMS)*time.Millisecond, cfg.BackoffMaxDelay)
+	collectorClobClient := api.NewCLOBClient(httpClient, cfg.CLOBBaseURL, collectorClobRL)
+
 	// Create and start scanner
 	sc := scanner.New(store, gammaClient, clobClient, cfg)
+
+	// Create collector with its own rate limiter (333ms) and CLOB client
+	bookCollector := collector.New(store, collectorClobClient, cfg)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sc.Run(ctx)
+	bookCollector.Run(ctx)
 
 	// Wait for shutdown signal
 	sigCh := make(chan os.Signal, 1)
@@ -90,10 +99,11 @@ func main() {
 	slog.Info("received shutdown signal", "signal", sig.String())
 	cancel()
 
-	// Wait for scanner to finish current work
+	// Wait for scanner and collector to finish current work
 	done := make(chan struct{})
 	go func() {
 		sc.Wait()
+		bookCollector.Wait()
 		close(done)
 	}()
 

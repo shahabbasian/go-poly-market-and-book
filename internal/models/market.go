@@ -172,3 +172,28 @@ type Level struct {
 	Price string `json:"price"`
 	Size  string `json:"size"`
 }
+
+// ActiveToken represents one token pair from a market.
+type ActiveToken struct {
+	TokenID  string `db:"token_id"`
+	Side     string `db:"side"` // "yes" or "no"
+	Symbol   string `db:"symbol"`
+	Interval string `db:"interval"`
+}
+
+// BookSnapshot holds a full order book snapshot for one token.
+type BookSnapshot struct {
+	TokenID    string
+	Side       string
+	Symbol     string
+	Interval   string
+	BestBid    *float64
+	BestAsk    *float64
+	Spread     *float64
+	BidSize    *float64
+	AskSize    *float64
+	LastTrade  *float64
+	BookHash   *string
+	RawBids    []byte // JSON array of bid levels
+	RawAsks    []byte // JSON array of ask levels
+}

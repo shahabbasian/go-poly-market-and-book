@@ -52,6 +52,41 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		`CREATE INDEX IF NOT EXISTS idx_new_markets_status ON public.new_markets USING btree (status)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_new_markets_unique_slug ON public.new_markets (slug)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_new_markets_unique_symbol_interval_start ON public.new_markets (symbol, interval, start_date) WHERE start_date IS NOT NULL`,
+
+		`CREATE TABLE IF NOT EXISTS public.book_snapshots (
+			id          BIGSERIAL PRIMARY KEY,
+			token_id    VARCHAR(128)  NOT NULL,
+			side        VARCHAR(3)    NOT NULL,
+			symbol      VARCHAR(10)   NOT NULL,
+			interval    VARCHAR(10)   NOT NULL,
+			best_bid    DOUBLE PRECISION,
+			best_ask    DOUBLE PRECISION,
+			spread      DOUBLE PRECISION,
+			bid_size    DOUBLE PRECISION,
+			ask_size    DOUBLE PRECISION,
+			last_trade  DOUBLE PRECISION,
+			book_hash   VARCHAR(128),
+			raw_bids    JSONB,
+			raw_asks    JSONB,
+			recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+		)`,
+		`CREATE INDEX IF NOT EXISTS idx_book_snapshots_token_time ON book_snapshots (token_id, recorded_at DESC)`,
+		`CREATE INDEX IF NOT EXISTS idx_book_snapshots_symbol_interval ON book_snapshots (symbol, interval, recorded_at DESC)`,
+
+		`CREATE TABLE IF NOT EXISTS public.current_books (
+			token_id    VARCHAR(128)  PRIMARY KEY,
+			side        VARCHAR(3)    NOT NULL,
+			symbol      VARCHAR(10)   NOT NULL,
+			interval    VARCHAR(10)   NOT NULL,
+			best_bid    DOUBLE PRECISION,
+			best_ask    DOUBLE PRECISION,
+			spread      DOUBLE PRECISION,
+			bid_size    DOUBLE PRECISION,
+			ask_size    DOUBLE PRECISION,
+			last_trade  DOUBLE PRECISION,
+			book_hash   VARCHAR(128),
+			updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+		)`,
 	}
 
 	for _, stmt := range statements {
