@@ -4,8 +4,8 @@ FROM golang:1.24-bookworm AS builder
 WORKDIR /app
 
 # Cache dependencies
-COPY go.mod go.sum ./
-RUN go mod download
+COPY go.mod ./
+RUN go mod tidy && go mod download
 
 # Build the binary
 COPY . .
