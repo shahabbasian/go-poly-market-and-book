@@ -3,11 +3,14 @@ package db
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // RunMigrations executes idempotent CREATE statements.
+// Permission errors on index creation are logged as warnings and skipped
+// so the app can still start if the DB user is not the table owner.
 func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	statements := []string{
 		`CREATE TABLE IF NOT EXISTS public.new_markets (
@@ -53,7 +56,14 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 
 	for _, stmt := range statements {
 		if _, err := pool.Exec(ctx, stmt); err != nil {
-			slog.Error("Migration failed", "stmt", stmt[:min(80, len(stmt))], "error", err)
+			if isPermissionOrOwnershipError(err) {
+				slog.Warn("Migration skipped: insufficient permissions (table may be owned by another user)",
+					"stmt", firstLine(stmt),
+					"error", err,
+				)
+				continue
+			}
+			slog.Error("Migration failed", "stmt", firstLine(stmt), "error", err)
 			return err
 		}
 	}
@@ -62,9 +72,22 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
+func isPermissionOrOwnershipError(err error) bool {
+	if err == nil {
+		return false
 	}
-	return b
+	msg := err.Error()
+	return strings.Contains(msg, "42501") || // insufficient_privilege
+		strings.Contains(msg, "must be owner") ||
+		strings.Contains(msg, "permission denied")
+}
+
+func firstLine(s string) string {
+	if idx := strings.Index(s, "\n"); idx != -1 {
+		s = s[:idx]
+	}
+	if len(s) > 100 {
+		return s[:100] + "..."
+	}
+	return s
 }
