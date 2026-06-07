@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type NewMarket struct {
 	ID                    string     `db:"id"`
@@ -141,7 +144,7 @@ type GammaMarketResponse struct {
 	Rewards               *string `json:"rewards"`
 	Tags                  *string `json:"tags"`
 	RelatedMarkets        *string `json:"relatedMarkets"`
-	Events                *string `json:"events"`
+	Events                json.RawMessage `json:"events,omitempty"`
 	Category              *string `json:"category"`
 	Categories            *string `json:"categories"`
 }
