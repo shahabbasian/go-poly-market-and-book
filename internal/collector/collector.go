@@ -303,11 +303,11 @@ func (c *Collector) dedupLatest(snaps []*models.BookSnapshot) []*models.BookSnap
 
 func (c *Collector) buildSnapshot(tok models.ActiveToken, book *models.CLOBBookResponse) *models.BookSnapshot {
 	snap := &models.BookSnapshot{
-		TokenID:      tok.TokenID,
-		Side:         tok.Side,
-		Symbol:       tok.Symbol,
-		Interval:     tok.Interval,
-		TimestampAPI: parseAPITimestamp(book.Timestamp),
+		TokenID:  tok.TokenID,
+		Side:     tok.Side,
+		Symbol:   tok.Symbol,
+		Interval: tok.Interval,
+		TimestampAPI: parseRawTimestamp(book.Timestamp),
 	}
 
 	// Best bid = bids[0] (sorted descending by price)
@@ -355,22 +355,13 @@ func (c *Collector) buildSnapshot(tok models.ActiveToken, book *models.CLOBBookR
 	return snap
 }
 
-// parseAPITimestamp tries RFC3339 first, then falls back to Unix epoch (seconds).
-func parseAPITimestamp(s string) *time.Time {
+// parseRawTimestamp returns the raw epoch-millisecond value from the API string.
+func parseRawTimestamp(s string) *int64 {
 	if s == "" {
 		return nil
 	}
-	if t, err := time.Parse(time.RFC3339Nano, s); err == nil {
-		return &t
-	}
-	if t, err := time.Parse(time.RFC3339, s); err == nil {
-		return &t
-	}
-	if f, err := strconv.ParseFloat(s, 64); err == nil {
-		sec := int64(f)
-		nsec := int64((f - float64(sec)) * 1e9)
-		t := time.Unix(sec, nsec).UTC()
-		return &t
+	if ms, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return &ms
 	}
 	return nil
 }

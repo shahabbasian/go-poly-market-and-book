@@ -193,8 +193,8 @@ type BookSnapshot struct {
 	BidSize     *float64
 	AskSize     *float64
 	LastTrade   *float64
-	BookHash    *string
-	TimestampAPI *time.Time // timestamp returned by the CLOB API
-	RawBids     []byte     // JSON array of bid levels
+	BookHash     *string
+	TimestampAPI *int64     // raw timestamp returned by the CLOB API (epoch milliseconds)
+	RawBids      []byte     // JSON array of bid levels
 	RawAsks     []byte     // JSON array of ask levels
 }

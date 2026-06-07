@@ -69,7 +69,7 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			ask_size     DOUBLE PRECISION,
 			last_trade   DOUBLE PRECISION,
 			book_hash    VARCHAR(128),
-			timestamp_api TIMESTAMPTZ,   -- timestamp returned by the Polymarket CLOB API
+			timestamp_api BIGINT,        -- raw timestamp returned by the Polymarket CLOB API (epoch milliseconds)
 			raw_bids     JSONB,
 			raw_asks     JSONB,
 			recorded_at  TIMESTAMPTZ NOT NULL DEFAULT now()
