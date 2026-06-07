@@ -65,6 +65,13 @@ func GenerateNextSlugs(symbol string, interval string, currentSlug string, n int
 		return nil, err
 	}
 
+	// If anchor is so old that even N future slugs are expired, it's stale.
+	anchorTime := time.Unix(ts, 0)
+	staleThreshold := time.Now().UTC().Add(-time.Duration(n) * time.Duration(dur) * time.Second)
+	if anchorTime.Before(staleThreshold) {
+		return nil, fmt.Errorf("slug anchor %s is stale (older than %d %s intervals)", currentSlug, n, interval)
+	}
+
 	var slugs []string
 	for i := int64(1); i <= int64(n); i++ {
 		nextTs := ts + i*dur
@@ -158,6 +165,12 @@ func generateNext1hSlugs(symbol string, currentSlug string, n int) ([]string, er
 	t, err := parse1hSlug(currentSlug)
 	if err != nil {
 		// Fallback: use current time and just generate from now
+		return generateInitial1hSlugs(symbol, time.Now().UTC(), n)
+	}
+
+	// If anchor is so old that even N future hours are expired, fall back.
+	staleThreshold := time.Now().UTC().Add(-time.Duration(n) * time.Hour)
+	if t.Before(staleThreshold) {
 		return generateInitial1hSlugs(symbol, time.Now().UTC(), n)
 	}
 

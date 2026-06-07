@@ -88,6 +88,11 @@ func (s *Scanner) runDiscovery(ctx context.Context) {
 			var err error
 			if hasHistory {
 				slugs, err = GenerateNextSlugs(coin.Symbol, ivl.Name, latestSlug, s.cfg.FutureSlugCount)
+				if err != nil {
+					// Anchor is stale — fall back to generating from current time
+					slog.Info("latest slug is stale, falling back to initial generation", "symbol", coin.Symbol, "interval", ivl.Name, "slug", latestSlug, "error", err)
+					slugs, err = GenerateInitialSlugs(coin.Symbol, ivl.Name, s.cfg.InitialSlugCount)
+				}
 			} else {
 				slugs, err = GenerateInitialSlugs(coin.Symbol, ivl.Name, s.cfg.InitialSlugCount)
 			}
