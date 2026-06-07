@@ -3,12 +3,11 @@ FROM golang:1.24-bookworm AS builder
 
 WORKDIR /app
 
-# Cache dependencies
-COPY go.mod ./
+# Copy source and module files, then resolve dependencies
+COPY . .
 RUN go mod tidy && go mod download
 
 # Build the binary
-COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/fetcher .
 
 # Stage 2: Runtime
