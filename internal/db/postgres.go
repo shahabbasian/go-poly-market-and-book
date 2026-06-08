@@ -459,16 +459,13 @@ func (s *PostgresStore) GetActiveMarketTokens(ctx context.Context, slugs []strin
 func (s *PostgresStore) InsertBookSnapshot(ctx context.Context, snap *models.BookSnapshot) error {
 	query := `
 		INSERT INTO book_snapshots
-			(token_id, side, symbol, interval, best_bid, best_ask, spread,
-			 bid_size, ask_size, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			(token_id, side, symbol, interval, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT DO NOTHING
 	`
 	_, err := s.pool.Exec(ctx, query,
 		snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
-		snap.BestBid, snap.BestAsk, snap.Spread,
-		snap.BidSize, snap.AskSize, snap.LastTrade,
-		snap.BookHash, snap.TimestampAPI, snap.RawBids, snap.RawAsks,
+		snap.LastTrade, snap.BookHash, snap.TimestampAPI, snap.RawBids, snap.RawAsks,
 	)
 	if err != nil {
 		return fmt.Errorf("inserting book snapshot: %w", err)
@@ -480,20 +477,16 @@ func (s *PostgresStore) InsertBookSnapshot(ctx context.Context, snap *models.Boo
 func (s *PostgresStore) UpsertCurrentBook(ctx context.Context, snap *models.BookSnapshot) error {
 	query := `
 		INSERT INTO current_books
-			(token_id, side, symbol, interval, best_bid, best_ask, spread,
-			 bid_size, ask_size, last_trade, book_hash)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			(token_id, side, symbol, interval, last_trade, book_hash)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (token_id) DO UPDATE SET
 			side = EXCLUDED.side, symbol = EXCLUDED.symbol, interval = EXCLUDED.interval,
-			best_bid = EXCLUDED.best_bid, best_ask = EXCLUDED.best_ask,
-			spread = EXCLUDED.spread, bid_size = EXCLUDED.bid_size,
-			ask_size = EXCLUDED.ask_size, last_trade = EXCLUDED.last_trade,
+			last_trade = EXCLUDED.last_trade,
 			book_hash = EXCLUDED.book_hash, updated_at = now()
 	`
 	_, err := s.pool.Exec(ctx, query,
 		snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
-		snap.BestBid, snap.BestAsk, snap.Spread,
-		snap.BidSize, snap.AskSize, snap.LastTrade, snap.BookHash,
+		snap.LastTrade, snap.BookHash,
 	)
 	if err != nil {
 		return fmt.Errorf("upserting current book: %w", err)
@@ -509,9 +502,8 @@ func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*m
 
 	const query = `
 		INSERT INTO book_snapshots
-			(token_id, side, symbol, interval, best_bid, best_ask, spread,
-			 bid_size, ask_size, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+			(token_id, side, symbol, interval, last_trade, book_hash, timestamp_api, raw_bids, raw_asks)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT DO NOTHING
 	`
 
@@ -519,9 +511,7 @@ func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*m
 	for _, snap := range snaps {
 		batch.Queue(query,
 			snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
-			snap.BestBid, snap.BestAsk, snap.Spread,
-			snap.BidSize, snap.AskSize, snap.LastTrade,
-			snap.BookHash, snap.TimestampAPI, snap.RawBids, snap.RawAsks,
+			snap.LastTrade, snap.BookHash, snap.TimestampAPI, snap.RawBids, snap.RawAsks,
 		)
 	}
 
@@ -545,14 +535,11 @@ func (s *PostgresStore) UpsertCurrentBooksBatch(ctx context.Context, snaps []*mo
 
 	const query = `
 		INSERT INTO current_books
-			(token_id, side, symbol, interval, best_bid, best_ask, spread,
-			 bid_size, ask_size, last_trade, book_hash)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			(token_id, side, symbol, interval, last_trade, book_hash)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (token_id) DO UPDATE SET
 			side = EXCLUDED.side, symbol = EXCLUDED.symbol, interval = EXCLUDED.interval,
-			best_bid = EXCLUDED.best_bid, best_ask = EXCLUDED.best_ask,
-			spread = EXCLUDED.spread, bid_size = EXCLUDED.bid_size,
-			ask_size = EXCLUDED.ask_size, last_trade = EXCLUDED.last_trade,
+			last_trade = EXCLUDED.last_trade,
 			book_hash = EXCLUDED.book_hash, updated_at = now()
 	`
 
@@ -560,8 +547,7 @@ func (s *PostgresStore) UpsertCurrentBooksBatch(ctx context.Context, snaps []*mo
 	for _, snap := range snaps {
 		batch.Queue(query,
 			snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
-			snap.BestBid, snap.BestAsk, snap.Spread,
-			snap.BidSize, snap.AskSize, snap.LastTrade, snap.BookHash,
+			snap.LastTrade, snap.BookHash,
 		)
 	}
 

@@ -341,28 +341,6 @@ func (c *Collector) buildSnapshot(tok models.ActiveToken, book *models.CLOBBookR
 		TimestampAPI: parseRawTimestamp(book.Timestamp),
 	}
 
-	// Best bid = bids[0] (sorted descending by price)
-	if len(book.Bids) > 0 {
-		bid, _ := strconv.ParseFloat(book.Bids[0].Price, 64)
-		snap.BestBid = &bid
-		sz, _ := strconv.ParseFloat(book.Bids[0].Size, 64)
-		snap.BidSize = &sz
-	}
-
-	// Best ask = asks[0] (sorted ascending by price)
-	if len(book.Asks) > 0 {
-		ask, _ := strconv.ParseFloat(book.Asks[0].Price, 64)
-		snap.BestAsk = &ask
-		sz, _ := strconv.ParseFloat(book.Asks[0].Size, 64)
-		snap.AskSize = &sz
-	}
-
-	// Spread
-	if snap.BestBid != nil && snap.BestAsk != nil {
-		spread := *snap.BestAsk - *snap.BestBid
-		snap.Spread = &spread
-	}
-
 	// Last trade
 	if book.LastTradePrice != "" {
 		ltp, _ := strconv.ParseFloat(book.LastTradePrice, 64)

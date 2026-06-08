@@ -62,11 +62,6 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			side         VARCHAR(3)    NOT NULL,
 			symbol       VARCHAR(10)   NOT NULL,
 			interval     VARCHAR(10)   NOT NULL,
-			best_bid     DOUBLE PRECISION,
-			best_ask     DOUBLE PRECISION,
-			spread       DOUBLE PRECISION,
-			bid_size     DOUBLE PRECISION,
-			ask_size     DOUBLE PRECISION,
 			last_trade   DOUBLE PRECISION,
 			book_hash    VARCHAR(128),
 			timestamp_api BIGINT,        -- raw timestamp returned by the Polymarket CLOB API (epoch milliseconds)
@@ -90,11 +85,6 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			side        VARCHAR(3)    NOT NULL,
 			symbol      VARCHAR(10)   NOT NULL,
 			interval    VARCHAR(10)   NOT NULL,
-			best_bid    DOUBLE PRECISION,
-			best_ask    DOUBLE PRECISION,
-			spread      DOUBLE PRECISION,
-			bid_size    DOUBLE PRECISION,
-			ask_size    DOUBLE PRECISION,
 			last_trade  DOUBLE PRECISION,
 			book_hash   VARCHAR(128),
 			updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
