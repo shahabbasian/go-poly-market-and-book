@@ -1,6 +1,6 @@
 # Polymarket Crypto Market Fetcher
 
-Go application that continuously discovers and tracks Polymarket crypto up/down markets across 5m, 15m, 1h, and 4h timeframes. Stores market data, token IDs, and order book info in PostgreSQL.
+Go application that continuously discovers and tracks Polymarket crypto up/down markets across 5m and 15m timeframes. Stores market data, token IDs, and order book info in PostgreSQL.
 
 ## Prerequisites
 
@@ -89,15 +89,15 @@ git push -u origin main
 
 ## Supported Markets
 
-| Coin | 5m Slug | 15m Slug | 1h Slug | 4h Slug |
-|------|---------|----------|---------|---------|
-| BTC | `btc-updown-5m-{ts}` | `btc-updown-15m-{ts}` | `bitcoin-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `btc-updown-4h-{ts}` |
-| ETH | `eth-updown-5m-{ts}` | `eth-updown-15m-{ts}` | `ethereum-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `eth-updown-4h-{ts}` |
-| SOL | `sol-updown-5m-{ts}` | `sol-updown-15m-{ts}` | `solana-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `sol-updown-4h-{ts}` |
-| XRP | `xrp-updown-5m-{ts}` | `xrp-updown-15m-{ts}` | `xrp-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `xrp-updown-4h-{ts}` |
-| DOGE | `doge-updown-5m-{ts}` | `doge-updown-15m-{ts}` | `dogecoin-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `doge-updown-4h-{ts}` |
-| HYPE | `hype-updown-5m-{ts}` | `hype-updown-15m-{ts}` | `hype-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `hype-updown-4h-{ts}` |
-| BNB | `bnb-updown-5m-{ts}` | `bnb-updown-15m-{ts}` | `bnb-up-or-down-{month}-{day}-{year}-{hour}pm-et` | `bnb-updown-4h-{ts}` |
+| Coin | 5m Slug | 15m Slug |
+|------|---------|----------|
+| BTC | `btc-updown-5m-{ts}` | `btc-updown-15m-{ts}` |
+| ETH | `eth-updown-5m-{ts}` | `eth-updown-15m-{ts}` |
+| SOL | `sol-updown-5m-{ts}` | `sol-updown-15m-{ts}` |
+| XRP | `xrp-updown-5m-{ts}` | `xrp-updown-15m-{ts}` |
+| DOGE | `doge-updown-5m-{ts}` | `doge-updown-15m-{ts}` |
+| HYPE | `hype-updown-5m-{ts}` | `hype-updown-15m-{ts}` |
+| BNB | `bnb-updown-5m-{ts}` | `bnb-updown-15m-{ts}` |
 
 ## Database
 

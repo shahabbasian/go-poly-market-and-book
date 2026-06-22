@@ -334,9 +334,15 @@ func (s *PostgresStore) upsertBySlugTx(ctx context.Context, tx pgx.Tx, m *models
 	return nil
 }
 
-// GetMarketsNeedingRefresh returns markets that need their data refreshed.
+// GetMarketsNeedingRefresh returns markets that need their data refreshed,
+// restricted to intervals currently being collected.
 func (s *PostgresStore) GetMarketsNeedingRefresh(ctx context.Context, maxAge time.Duration, limit int) ([]*models.NewMarket, error) {
 	cutoff := time.Now().UTC().Add(-maxAge)
+
+	activeIntervals := make([]string, 0, len(models.Intervals))
+	for _, iv := range models.Intervals {
+		activeIntervals = append(activeIntervals, iv.Name)
+	}
 
 	query := `
 		SELECT id, symbol, interval, condition_id, token_id_yes, token_id_no,
@@ -347,12 +353,13 @@ func (s *PostgresStore) GetMarketsNeedingRefresh(ctx context.Context, maxAge tim
 			status, winning_outcome, price_to_beat, last_book_hash,
 			created_at, updated_at
 		FROM public.new_markets
-		WHERE status = 'upcoming' OR updated_at < $1
+		WHERE (status = 'upcoming' OR updated_at < $1)
+		  AND interval = ANY($3)
 		ORDER BY updated_at ASC
 		LIMIT $2
 	`
 
-	rows, err := s.pool.Query(ctx, query, cutoff, limit)
+	rows, err := s.pool.Query(ctx, query, cutoff, limit, activeIntervals)
 	if err != nil {
 		return nil, fmt.Errorf("querying markets to refresh: %w", err)
 	}
@@ -421,7 +428,7 @@ func scanMarkets(rows pgx.Rows) ([]*models.NewMarket, error) {
 }
 
 // GetActiveMarketTokens returns token IDs for markets matching the given slugs.
-// Caller should provide slugs for the current time window (typically 28 slugs).
+// Caller should provide slugs for the current time window (typically 14 slugs).
 func (s *PostgresStore) GetActiveMarketTokens(ctx context.Context, slugs []string) ([]models.ActiveToken, error) {
 	query := `
 		SELECT

@@ -99,7 +99,7 @@ func (c *Collector) tokenRefreshLoop(ctx context.Context) {
 }
 
 func (c *Collector) refreshTokens(ctx context.Context) {
-	// Generate current slugs for all 28 coin×interval combos
+	// Generate current slugs for all active coin×interval combos (14 total).
 	var slugs []string
 	for _, coin := range models.Coins {
 		for _, iv := range models.Intervals {
@@ -263,8 +263,8 @@ func (c *Collector) flushBuffer(ctx context.Context) {
 	// Filter out consecutive duplicate book hashes per token.
 	// We keep the first snapshot of a new hash and skip later ones in this
 	// batch that match the last known hash.  This prevents DB bloat for
-	// stale markets (1h, 4h) without losing legitimate returns to a
-	// previous hash after an intervening change.
+	// stale markets without losing legitimate returns to a previous hash
+	// after an intervening change.
 	var filtered []*models.BookSnapshot
 	c.lastHashMu.Lock()
 	for _, snap := range toFlush {

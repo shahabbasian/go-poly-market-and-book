@@ -16,7 +16,7 @@ var Coins = []Coin{
 	{Symbol: "bnb", FullName: "bnb"},
 }
 
-// Interval represents one of the four market timeframes.
+// Interval represents one of the active market timeframes.
 type Interval struct {
 	Name     string
 	Duration int64 // seconds between markets
@@ -26,8 +26,6 @@ type Interval struct {
 var Intervals = []Interval{
 	{Name: "5m", Duration: 300, SlugKey: "5m"},
 	{Name: "15m", Duration: 900, SlugKey: "15m"},
-	{Name: "1h", Duration: 3600, SlugKey: "1h"},
-	{Name: "4h", Duration: 14400, SlugKey: "4h"},
 }
 
 var CoinSymbolMap = make(map[string]string)
