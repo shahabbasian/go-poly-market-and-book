@@ -11,9 +11,6 @@ var Coins = []Coin{
 	{Symbol: "eth", FullName: "ethereum"},
 	{Symbol: "sol", FullName: "solana"},
 	{Symbol: "xrp", FullName: "xrp"},
-	{Symbol: "doge", FullName: "dogecoin"},
-	{Symbol: "hype", FullName: "hype"},
-	{Symbol: "bnb", FullName: "bnb"},
 }
 
 // Interval represents one of the active market timeframes.

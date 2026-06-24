@@ -95,9 +95,6 @@ git push -u origin main
 | ETH | `eth-updown-5m-{ts}` | `eth-updown-15m-{ts}` |
 | SOL | `sol-updown-5m-{ts}` | `sol-updown-15m-{ts}` |
 | XRP | `xrp-updown-5m-{ts}` | `xrp-updown-15m-{ts}` |
-| DOGE | `doge-updown-5m-{ts}` | `doge-updown-15m-{ts}` |
-| HYPE | `hype-updown-5m-{ts}` | `hype-updown-15m-{ts}` |
-| BNB | `bnb-updown-5m-{ts}` | `bnb-updown-15m-{ts}` |
 
 ## Database
 

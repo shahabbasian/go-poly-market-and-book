@@ -99,7 +99,7 @@ func (c *Collector) tokenRefreshLoop(ctx context.Context) {
 }
 
 func (c *Collector) refreshTokens(ctx context.Context) {
-	// Generate current slugs for all active coin×interval combos (14 total).
+	// Generate current slugs for all active coin×interval combos (8 total).
 	var slugs []string
 	for _, coin := range models.Coins {
 		for _, iv := range models.Intervals {
