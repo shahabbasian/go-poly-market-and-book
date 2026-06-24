@@ -79,16 +79,6 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		//     WHERE timestamp_api IS NOT NULL GROUP BY token_id, timestamp_api
 		//   );
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_book_snapshots_unique_token_api_time ON book_snapshots (token_id, timestamp_api) WHERE timestamp_api IS NOT NULL`,
-
-		`CREATE TABLE IF NOT EXISTS public.current_books (
-			token_id    VARCHAR(128)  PRIMARY KEY,
-			side        VARCHAR(3)    NOT NULL,
-			symbol      VARCHAR(10)   NOT NULL,
-			interval    VARCHAR(10)   NOT NULL,
-			last_trade  DOUBLE PRECISION,
-			book_hash   VARCHAR(128),
-			updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-		)`,
 	}
 
 	for _, stmt := range statements {

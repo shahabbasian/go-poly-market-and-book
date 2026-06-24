@@ -291,43 +291,11 @@ func (c *Collector) flushBuffer(ctx context.Context) {
 		return
 	}
 
-	// 2. For current_books, only keep the latest snapshot per token_id
-	latest := c.dedupLatest(filtered)
-
-	if err := c.store.UpsertCurrentBooksBatch(ctx, latest); err != nil {
-		slog.Error("collector batch upsert failed", "rows", len(latest), "error", err)
-		return
-	}
-
 	slog.Info("collector flushed to DB",
 		"snapshots", len(filtered),
 		"skipped_dups", totalRows-len(filtered),
-		"current_books_upserted", len(latest),
 		"duration", time.Since(start),
 	)
-}
-
-// dedupLatest keeps only the most recent snapshot per token_id.
-// Iterates in forward order — later duplicates overwrite earlier ones
-// in the map, so the last (latest) per token_id wins.
-func (c *Collector) dedupLatest(snaps []*models.BookSnapshot) []*models.BookSnapshot {
-	latest := make(map[string]*models.BookSnapshot, 56)
-	order := make([]string, 0, 56) // track first-appearance order
-
-	for _, s := range snaps {
-		if _, exists := latest[s.TokenID]; !exists {
-			order = append(order, s.TokenID)
-		}
-		latest[s.TokenID] = s
-	}
-
-	result := make([]*models.BookSnapshot, 0, len(latest))
-	for _, id := range order {
-		if s, ok := latest[id]; ok {
-			result = append(result, s)
-		}
-	}
-	return result
 }
 
 // ---- Build snapshot from CLOB response ----

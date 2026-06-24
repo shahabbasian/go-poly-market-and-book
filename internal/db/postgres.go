@@ -480,27 +480,6 @@ func (s *PostgresStore) InsertBookSnapshot(ctx context.Context, snap *models.Boo
 	return nil
 }
 
-// UpsertCurrentBook upserts into current_books (ON CONFLICT on token_id).
-func (s *PostgresStore) UpsertCurrentBook(ctx context.Context, snap *models.BookSnapshot) error {
-	query := `
-		INSERT INTO current_books
-			(token_id, side, symbol, interval, last_trade, book_hash)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (token_id) DO UPDATE SET
-			side = EXCLUDED.side, symbol = EXCLUDED.symbol, interval = EXCLUDED.interval,
-			last_trade = EXCLUDED.last_trade,
-			book_hash = EXCLUDED.book_hash, updated_at = now()
-	`
-	_, err := s.pool.Exec(ctx, query,
-		snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
-		snap.LastTrade, snap.BookHash,
-	)
-	if err != nil {
-		return fmt.Errorf("upserting current book: %w", err)
-	}
-	return nil
-}
-
 // InsertBookSnapshotsBatch inserts multiple book snapshots using a single pgx.Batch.
 func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*models.BookSnapshot) error {
 	if len(snaps) == 0 {
@@ -534,37 +513,3 @@ func (s *PostgresStore) InsertBookSnapshotsBatch(ctx context.Context, snaps []*m
 	return nil
 }
 
-// UpsertCurrentBooksBatch upserts multiple current_books rows using a single pgx.Batch.
-func (s *PostgresStore) UpsertCurrentBooksBatch(ctx context.Context, snaps []*models.BookSnapshot) error {
-	if len(snaps) == 0 {
-		return nil
-	}
-
-	const query = `
-		INSERT INTO current_books
-			(token_id, side, symbol, interval, last_trade, book_hash)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (token_id) DO UPDATE SET
-			side = EXCLUDED.side, symbol = EXCLUDED.symbol, interval = EXCLUDED.interval,
-			last_trade = EXCLUDED.last_trade,
-			book_hash = EXCLUDED.book_hash, updated_at = now()
-	`
-
-	batch := &pgx.Batch{}
-	for _, snap := range snaps {
-		batch.Queue(query,
-			snap.TokenID, snap.Side, snap.Symbol, snap.Interval,
-			snap.LastTrade, snap.BookHash,
-		)
-	}
-
-	br := s.pool.SendBatch(ctx, batch)
-	defer br.Close()
-
-	for i := 0; i < len(snaps); i++ {
-		if _, err := br.Exec(); err != nil {
-			return fmt.Errorf("batch upsert current_books (row %d): %w", i, err)
-		}
-	}
-	return nil
-}
