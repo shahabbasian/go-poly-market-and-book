@@ -2,34 +2,23 @@ package scanner
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"time"
-
-	"github.com/shahabbasian/polymarket-market-fetcher/internal/models"
 )
 
 // GenerateInitialSlugs creates N future slugs anchored to current time.
 func GenerateInitialSlugs(symbol string, interval string, n int) ([]string, error) {
-	now := time.Now().UTC()
-
-	if interval == "1h" {
-		return generateInitial1hSlugs(symbol, now, n)
-	}
-
 	var dur int64
 	switch interval {
 	case "5m":
 		dur = 300
 	case "15m":
 		dur = 900
-	case "4h":
-		dur = 14400
 	default:
 		return nil, fmt.Errorf("unknown interval: %s", interval)
 	}
 
-	// Anchor to nearest past multiple of duration
+	now := time.Now().UTC()
 	ts := now.Unix()
 	rounded := (ts / dur) * dur
 
@@ -44,18 +33,12 @@ func GenerateInitialSlugs(symbol string, interval string, n int) ([]string, erro
 
 // GenerateNextSlugs generates N slugs starting from a known slug.
 func GenerateNextSlugs(symbol string, interval string, currentSlug string, n int) ([]string, error) {
-	if interval == "1h" {
-		return generateNext1hSlugs(symbol, currentSlug, n)
-	}
-
 	var dur int64
 	switch interval {
 	case "5m":
 		dur = 300
 	case "15m":
 		dur = 900
-	case "4h":
-		dur = 14400
 	default:
 		return nil, fmt.Errorf("unknown interval: %s", interval)
 	}
@@ -115,177 +98,20 @@ func parseTimestampSlug(slug string, interval string) (int64, error) {
 	return 0, fmt.Errorf("no timestamp found in slug: %s", slug)
 }
 
-// ---- 1h (human-readable date) patterns ----
-
-var hour1hRegex = regexp.MustCompile(`^(\w+)-up-or-down-([a-z]+)-(\d{1,2})-(\d{4})-(\d{1,2})([ap]m)-et$`)
-
-// Month name to number mapping (Polymarket uses full lowercase month names).
-var monthMap = map[string]time.Month{
-	"january":   time.January,
-	"february":  time.February,
-	"march":     time.March,
-	"april":     time.April,
-	"may":       time.May,
-	"june":      time.June,
-	"july":      time.July,
-	"august":    time.August,
-	"september": time.September,
-	"october":   time.October,
-	"november":  time.November,
-	"december":  time.December,
-}
-
-var monthNames = []string{"", "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"}
-
-func generateInitial1hSlugs(symbol string, now time.Time, n int) ([]string, error) {
-	fullName := models.CoinSymbolMap[symbol]
-	if fullName == "" {
-		return nil, fmt.Errorf("unknown symbol: %s", symbol)
-	}
-
-	et, err := time.LoadLocation("America/New_York")
-	if err != nil {
-		return nil, fmt.Errorf("loading ET timezone: %w", err)
-	}
-	nowET := now.In(et)
-
-	// Anchor to the current ET hour
-	anchor := time.Date(nowET.Year(), nowET.Month(), nowET.Day(), nowET.Hour(), 0, 0, 0, et)
-
-	var slugs []string
-	for i := 1; i <= n; i++ {
-		t := anchor.Add(time.Duration(i) * time.Hour)
-		slug := format1hSlug(fullName, t)
-		slugs = append(slugs, slug)
-	}
-	return slugs, nil
-}
-
-func generateNext1hSlugs(symbol string, currentSlug string, n int) ([]string, error) {
-	fullName := models.CoinSymbolMap[symbol]
-	if fullName == "" {
-		return nil, fmt.Errorf("unknown symbol: %s", symbol)
-	}
-
-	et, err := time.LoadLocation("America/New_York")
-	if err != nil {
-		return nil, fmt.Errorf("loading ET timezone: %w", err)
-	}
-	nowET := time.Now().In(et)
-
-	// Try to parse from existing slug
-	t, err := parse1hSlug(currentSlug)
-	if err != nil {
-		// Fallback: use current ET time and just generate from now
-		return generateInitial1hSlugs(symbol, nowET, n)
-	}
-
-	// If anchor is so old that even N future hours are expired, fall back.
-	staleThreshold := nowET.Add(-time.Duration(n) * time.Hour)
-	if t.Before(staleThreshold) {
-		return generateInitial1hSlugs(symbol, nowET, n)
-	}
-
-	var slugs []string
-	for i := 1; i <= n; i++ {
-		next := t.Add(time.Duration(i) * time.Hour)
-		slug := format1hSlug(fullName, next)
-		slugs = append(slugs, slug)
-	}
-	return slugs, nil
-}
-
-func parse1hSlug(slug string) (time.Time, error) {
-	matches := hour1hRegex.FindStringSubmatch(slug)
-	if len(matches) != 7 {
-		return time.Time{}, fmt.Errorf("slug does not match 1h pattern: %s", slug)
-	}
-
-	// matches[1] = fullName (not used here)
-	monthName := matches[2]
-	dayStr := matches[3]
-	yearStr := matches[4]
-	hourStr := matches[5]
-	ampm := matches[6]
-
-	month, ok := monthMap[monthName]
-	if !ok {
-		return time.Time{}, fmt.Errorf("unknown month name: %s", monthName)
-	}
-
-	day, _ := strconv.Atoi(dayStr)
-	year, _ := strconv.Atoi(yearStr)
-	hour, _ := strconv.Atoi(hourStr)
-
-	if ampm == "pm" && hour != 12 {
-		hour += 12
-	} else if ampm == "am" && hour == 12 {
-		hour = 0
-	}
-
-	et, err := time.LoadLocation("America/New_York")
-	if err != nil {
-		return time.Time{}, fmt.Errorf("loading ET timezone: %w", err)
-	}
-	t := time.Date(year, month, day, hour, 0, 0, 0, et)
-	return t, nil
-}
-
-func format1hSlug(fullName string, t time.Time) string {
-	hour := t.Hour()
-	var hourStr string
-	if hour == 0 {
-		hourStr = "12am"
-	} else if hour < 12 {
-		hourStr = fmt.Sprintf("%dam", hour)
-	} else if hour == 12 {
-		hourStr = "12pm"
-	} else {
-		hourStr = fmt.Sprintf("%dpm", hour-12)
-	}
-
-	return fmt.Sprintf("%s-up-or-down-%s-%d-%d-%s-et",
-		fullName,
-		monthNames[t.Month()],
-		t.Day(),
-		t.Year(),
-		hourStr,
-	)
-}
-
 // CurrentSlug returns the slug for the currently active market window.
 // Returns empty string if symbol or interval is invalid.
 func CurrentSlug(symbol string, interval string) string {
-	now := time.Now().UTC()
-
-	if interval == "1h" {
-		fullName := models.CoinSymbolMap[symbol]
-		if fullName == "" {
-			return ""
-		}
-		et, err := time.LoadLocation("America/New_York")
-		if err != nil {
-			return ""
-		}
-		nowET := now.In(et)
-		// Anchor to the current ET hour
-		anchor := time.Date(nowET.Year(), nowET.Month(), nowET.Day(), nowET.Hour(), 0, 0, 0, et)
-		return format1hSlug(fullName, anchor)
-	}
-
 	var dur int64
 	switch interval {
 	case "5m":
 		dur = 300
 	case "15m":
 		dur = 900
-	case "4h":
-		dur = 14400
 	default:
 		return ""
 	}
 
-	// Round current time down to the nearest interval boundary.
+	now := time.Now().UTC()
 	ts := now.Unix()
 	rounded := (ts / dur) * dur
 

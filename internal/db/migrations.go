@@ -8,11 +8,12 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// RunMigrations executes idempotent CREATE statements.
-// Permission errors on index creation are logged as warnings and skipped
-// so the app can still start if the DB user is not the table owner.
+// RunMigrations is kept as a documentation-only reference for the expected
+// database schema. It is intentionally NOT called on application startup; all
+// schema changes are applied manually by the operator.
 func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	statements := []string{
+		// NOTE: apply these statements manually against your database.
 		`CREATE TABLE IF NOT EXISTS public.new_markets (
 			id uuid NOT NULL DEFAULT gen_random_uuid(),
 			symbol character varying(10) NOT NULL,
@@ -45,17 +46,15 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			last_book_hash character varying(128) NULL,
 			CONSTRAINT new_markets_pkey PRIMARY KEY (id)
 		)`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS unique_new_token_id_yes ON public.new_markets (token_id_yes) WHERE token_id_yes IS NOT NULL`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_new_markets_unique_slug ON public.new_markets (slug)`,
 		`CREATE INDEX IF NOT EXISTS idx_new_markets_symbol_interval ON public.new_markets USING btree (symbol, interval)`,
 		`CREATE INDEX IF NOT EXISTS idx_new_markets_start_date ON public.new_markets USING btree (start_date)`,
 		`CREATE INDEX IF NOT EXISTS idx_new_markets_token_id_yes ON public.new_markets USING btree (token_id_yes)`,
 		`CREATE INDEX IF NOT EXISTS idx_new_markets_status ON public.new_markets USING btree (status)`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_new_markets_unique_slug ON public.new_markets (slug)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_new_markets_unique_symbol_interval_start ON public.new_markets (symbol, interval, start_date) WHERE start_date IS NOT NULL`,
 
-		// NOTE: migrations are run manually. The statements below serve as documentation
-		// of the expected schema. If you alter the table, run the equivalent ALTER TABLE
-		// commands by hand against your database.
+		// NOTE: the partial unique index on token_id_yes has been removed from the
+		// expected schema because upserts now use slug as the single unique key.
 		`CREATE TABLE IF NOT EXISTS public.book_snapshots (
 			id           BIGSERIAL PRIMARY KEY,
 			token_id     VARCHAR(128)  NOT NULL,
