@@ -54,11 +54,9 @@ func main() {
 	}
 	defer store.Close()
 
-	// Run migrations
-	if err := db.RunMigrations(context.Background(), store.Pool()); err != nil {
-		slog.Error("migration failed", "error", err)
-		os.Exit(1)
-	}
+	// Migrations are intentionally disabled in this project.
+	// Database schema changes are performed manually by the operator.
+	slog.Info("migrations skipped: manual schema management only")
 
 	// Create HTTP client
 	httpClient := &http.Client{
